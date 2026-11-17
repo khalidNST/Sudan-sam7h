@@ -222,9 +222,20 @@ function showQuestion() {
   const bar = $('[data-bar]');
   bar.setAttribute('aria-valuenow', game.qi + 1); bar.setAttribute('aria-valuemax', st.questions.length);
   $('i', bar).style.width = `${(game.qi / st.questions.length) * 100}%`;
+  // حالة كل سؤال تنحفظ عشان الرجوع: ترتيب الخيارات، التلميح، وإجابة اللاعب
+  st.log = st.log || [];
+  let rec = st.log[game.qi];
+  if (!rec) {
+    rec = st.log[game.qi] = {
+      useHint: !!(q.type === 'image' && q.hint && lv.hintChance && Math.random() < lv.hintChance),
+      opts: shuffle([q.answer, ...shuffle(q.distractors).slice(0, lv.opts - 1)]),
+      chosen: null,
+    };
+  }
+  game.rec = rec;
   // الوسيط: صورة، كلمة، أو تلميح
   const pic = $('[data-pic]'), img = $('[data-q-img]'), tile = $('[data-word]');
-  const useHint = q.type === 'image' && q.hint && lv.hintChance && Math.random() < lv.hintChance;
+  const useHint = rec.useHint;
   pic.classList.toggle('contain', q.section === 'home' && q.type === 'image' && !/^trend/.test(q.id));
   if (q.type === 'image' && !useHint) {
     img.hidden = false; tile.hidden = true;
@@ -245,11 +256,23 @@ function showQuestion() {
   else if (useHint && q.section === 'home') prompt = q.group === 'الترندات' ? 'وش اسم الترند؟' : 'وش اسم هذا الغرض؟';
   $('[data-q-text]').textContent = prompt;
   // الخيارات
-  const opts = shuffle([q.answer, ...shuffle(q.distractors).slice(0, lv.opts - 1)]);
-  $('[data-opts]').innerHTML = opts.map((o, i) =>
+  $('[data-opts]').innerHTML = rec.opts.map((o, i) =>
     `<button class="opt" data-opt="${esc(o)}"${o === q.answer ? ' data-correct' : ''}><span class="k">${i + 1}</span><span class="t">${esc(o)}</span><span class="mark" aria-hidden="true"></span></button>`).join('');
   const fb = $('[data-feedback]'); fb.textContent = ''; fb.className = 'feedback';
-  $('[data-action="fifty"]').disabled = game.fiftyUsed;
+  // سؤال جاوب عليه قبل (رجع له): يظهر مقفول بنتيجته
+  if (rec.chosen !== null) {
+    game.answered = true;
+    $$('.opt').forEach(b => {
+      b.disabled = true;
+      if (b.hasAttribute('data-correct')) b.classList.add('is-correct');
+      else if (b.dataset.opt === rec.chosen) b.classList.add('is-wrong');
+      else b.classList.add('is-dim');
+    });
+    fb.textContent = rec.ok ? 'جاوبته صح ✓' : 'جاوبته غلط ✗';
+    fb.className = `feedback ${rec.ok ? 'right' : 'wrong'}`;
+  }
+  $('[data-action="fifty"]').disabled = game.fiftyUsed || game.answered;
+  renderNav();
   show('play');
   $('[data-q-text]').focus({ preventScroll: true });
 }
@@ -258,8 +281,13 @@ function showQuestion() {
 function answer(btn) {
   if (game.answered) return;
   game.answered = true;
+  game.pending = true; // لين تطلع البطاقة ما نسمح بالتنقل
   const q = game.current, st = game.stages[game.si];
   const ok = btn.hasAttribute('data-correct');
+  game.rec.chosen = btn.dataset.opt;
+  game.rec.ok = ok;
+  $('[data-action="fifty"]').disabled = true;
+  renderNav();
   $$('.opt').forEach(b => {
     b.disabled = true;
     if (b.hasAttribute('data-correct')) b.classList.add('is-correct');
@@ -289,6 +317,8 @@ function answer(btn) {
 
 /* ---------- بطاقة التعريف ---------- */
 function openCard(q, ok, gained, streakBonus) {
+  game.pending = false;
+  renderNav();
   const res = $('[data-res]');
   res.className = `res ${ok ? '' : 'wrong'}`;
   res.dataset.mark = ok ? '✓' : '✗';
@@ -319,11 +349,35 @@ function openCard(q, ok, gained, streakBonus) {
 function next() {
   $('[data-card]').hidden = true;
   if (game.hearts <= 0) { game.out = true; return finish(); }
+  forward();
+}
+function forward() {
   const st = game.stages[game.si];
   game.qi++;
   if (game.qi < st.questions.length) showQuestion();
   else showSummary();
 }
+
+/* ---------- سكيب ورجوع ---------- */
+function renderNav() {
+  if (!game || !game.rec) return;
+  const back = $('[data-action="back"]'), skip = $('[data-action="skip"]');
+  back.disabled = game.qi === 0 || game.pending;
+  skip.disabled = !!game.pending;
+  const st = game.stages[game.si], last = game.qi >= st.questions.length - 1;
+  $('[data-skip-label]').textContent = game.rec.chosen !== null ? (last ? 'إنهاء القسم' : 'التالي') : 'سكيب';
+  skip.setAttribute('aria-label', game.rec.chosen !== null ? 'السؤال التالي' : 'تخطّي السؤال بدون ما ينقص قلب');
+}
+function skip() {
+  if (!game || game.pending || !$('[data-card]').hidden) return;
+  forward();
+}
+function back() {
+  if (!game || game.pending || game.qi === 0 || !$('[data-card]').hidden) return;
+  game.qi--;
+  showQuestion();
+}
+const skippedIn = st => st.questions.length - st.stats.right - st.stats.wrong;
 
 /* ---------- 5. ملخص المرحلة ---------- */
 function showSummary() {
@@ -335,7 +389,8 @@ function showSummary() {
   $('[data-sum-wrong]').textContent = s.wrong;
   $('[data-sum-pts]').textContent = s.pts;
   const ratio = s.right / Math.max(1, s.right + s.wrong);
-  $('[data-sum-msg]').textContent = ratio >= .8 ? 'دي درعة! 🔥' : ratio >= .5 ? 'زط! كمّل كدا' : 'ما مشكلة، القسم الجاي أسهل 😄';
+  const sk = skippedIn(st);
+  $('[data-sum-msg]').textContent = (ratio >= .8 ? 'دي درعة! 🔥' : ratio >= .5 ? 'زط! كمّل كدا' : 'ما مشكلة، القسم الجاي أسهل 😄') + (sk > 0 ? ` · ⏭️ تخطّيت ${sk}` : '');
   const b = $('[data-action="after-summary"]');
   b.textContent = last ? 'شوف النتيجة النهائية ←' : `القسم التالي: ${game.stages[game.si + 1].title} ←`;
   show('summary');
@@ -430,6 +485,8 @@ document.addEventListener('click', e => {
     case 'quit': $('[data-pause]').hidden = true; finish(); break;
     case 'more': $('[data-card-bio]').classList.add('open'); a.hidden = true; break;
     case 'next': next(); break;
+    case 'skip': skip(); break;
+    case 'back': back(); break;
     case 'after-summary': afterSummary(); break;
     case 'again': startGame(game?.quick); break;
   }
@@ -446,6 +503,8 @@ document.addEventListener('keydown', e => {
   if (!playing) return;
   if ((e.key === 'm' || e.key === 'M' || e.key === 'ة') && !e.ctrlKey) return toggleMute();
   if (overlayOpen) return;
+  if (['s', 'S', 'س'].includes(e.key)) return skip();
+  if (e.key === 'Backspace') { e.preventDefault(); return back(); }
   const n = parseInt(e.key.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)), 10);
   if (n >= 1 && n <= 4) { const b = $$('.opt')[n - 1]; if (b && !b.disabled) answer(b); return; }
   if (e.key.startsWith('Arrow')) {
