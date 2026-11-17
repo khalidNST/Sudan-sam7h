@@ -59,21 +59,42 @@ const store = {
 const sound = {
   ctx: null,
   get on() { return settings.sound; },
-  tone(f, d, v = .08, type = 'sine', delay = 0) {
-    if (!this.on) return;
+  // يجهّز الصوت ويصحّيه لو الجوال وقّفه (مثلًا بعد ما تطلع من الصفحة وترجع)
+  ensure() {
     try {
-      this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
-      const t = this.ctx.currentTime + delay, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        this.ctx = new AC();
+      }
+      if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
+      return this.ctx;
+    } catch { return null; }
+  },
+  // الجوالات ما تسمح بالصوت إلا بعد لمسة من اللاعب، فنفتحه مع أول لمسة
+  unlock() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* */ } // آيفون: يشتغل حتى في الوضع الصامت
+    const c = this.ensure(); if (!c) return;
+    try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch { /* */ }
+  },
+  tone(f, d, v = .15, type = 'sine', delay = 0) {
+    if (!this.on) return;
+    const c = this.ensure(); if (!c) return;
+    try {
+      const t = c.currentTime + .01 + delay, o = c.createOscillator(), g = c.createGain();
       o.type = type; o.frequency.setValueAtTime(f, t);
-      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
-      o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + d + .02);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+      o.connect(g).connect(c.destination); o.start(t); o.stop(t + d + .05);
     } catch { /* المتصفح ما يدعم الصوت */ }
   },
-  // إيقاع خفيف شبه الدلوكة
-  right() { this.tone(110, .22, .28); this.tone(220, .1, .14, 'triangle', .15); this.tone(110, .22, .28, 'sine', .3); this.tone(165, .12, .12, 'triangle', .42); },
-  wrong() { this.tone(196, .25, .1, 'sawtooth'); this.tone(147, .35, .1, 'sawtooth', .18); },
-  fanfare() { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, .3, .1, 'triangle', i * .14)); },
+  // ترددات تطلع واضحة من سماعة الجوال
+  right() { this.tone(440, .09, .25, 'triangle'); this.tone(660, .14, .22, 'triangle', .1); this.tone(880, .3, .22, 'triangle', .2); },
+  wrong() { this.tone(330, .2, .14, 'square'); this.tone(247, .4, .14, 'square', .2); },
+  click() { this.tone(660, .1, .18, 'triangle'); },
+  fanfare() { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, .35, .2, 'triangle', i * .15)); },
 };
+['pointerdown', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, () => sound.unlock(), { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && sound.ctx) sound.ensure(); });
 
 /* ---------- الحالة ---------- */
 const DEFAULTS = { name: '', avatar: 0, level: 'medium', sections: null, length: '10', sound: true };
@@ -463,6 +484,7 @@ function toggleMute() {
   settings.sound = !settings.sound;
   store.set('settings', settings);
   renderMe();
+  if (settings.sound) sound.click(); // نغمة قصيرة تأكّد إن الصوت رجع
 }
 
 /* ---------- الأحداث ---------- */
