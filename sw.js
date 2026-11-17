@@ -1,8 +1,8 @@
 // يخلي اللعبة تشتغل أوفلاين بعد أول تحميل.
 // لما تعدّل الأسئلة أو الصور، غيّر رقم الإصدار هنا عشان الأجهزة تحدّث نسختها.
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `sudan-challenge-${VERSION}`;
-const CORE = ['./', 'index.html', 'css/app.css', 'js/app.js', 'data/questions.json', 'manifest.webmanifest', 'public/icons/icon-192.png', 'public/icons/icon-512.png'];
+const CORE = ['./', 'index.html', 'css/app.css?v=5', 'js/app.js?v=5', 'data/questions.json', 'manifest.webmanifest', 'public/icons/icon-192.png', 'public/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
@@ -34,7 +34,9 @@ self.addEventListener('fetch', e => {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(put)));
   } else {
     // الصفحة والكود والأسئلة: الشبكة أولًا عشان التعديلات توصل، والكاش لو ما فيه نت
-    e.respondWith(fetch(req).then(put).catch(() => caches.match(req, { ignoreSearch: true })
+    // cache: 'no-cache' يتجاوز كاش المتصفح عشان ما يجيب نسخة قديمة من الكود
+    const fresh = req.mode === 'navigate' ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req, { cache: 'no-cache' });
+    e.respondWith(fresh.then(put).catch(() => caches.match(req, { ignoreSearch: true })
       .then(hit => hit || (req.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
   }
 });
