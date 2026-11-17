@@ -1,6 +1,6 @@
 // يخلي اللعبة تشتغل أوفلاين بعد أول تحميل.
 // لما تعدّل الأسئلة أو الصور، غيّر رقم الإصدار هنا عشان الأجهزة تحدّث نسختها.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `sudan-challenge-${VERSION}`;
 const CORE = ['./', 'index.html', 'css/app.css', 'js/app.js', 'data/questions.json', 'manifest.webmanifest', 'public/icons/icon-192.png', 'public/icons/icon-512.png'];
 

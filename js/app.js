@@ -43,6 +43,7 @@ const ICONS = {
   home: '<path d="M8 30 32 10l24 20M14 26v28h36V26"/><path d="M26 54V40h12v14"/>',
   half: '<circle cx="32" cy="32" r="24"/><path fill="currentColor" d="M32 8a24 24 0 0 1 0 48z"/>',
   bolt: '<path d="M36 6 14 36h16l-4 22 24-32H34z"/>',
+  mix: '<path d="M8 20h10c10 0 14 24 24 24h12M48 38l6 6-6 6M8 44h10c4 0 7-4 9-8M38 20h16M48 14l6 6-6 6"/>',
 };
 document.body.insertAdjacentHTML('afterbegin', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${Object.entries(ICONS).map(([k, v]) =>
   `<symbol id="i-${k}" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">${v}</symbol>`).join('')}</svg>`);
@@ -88,13 +89,17 @@ function show(name) {
   const f = $('h1, h2', s);
   if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
 }
-const sectionById = id => data.sections.find(s => s.id === id);
-const countIn = id => data.questions.filter(q => q.section === id).length;
+// قسم «ميكس»: يخلط أسئلة كل الأقسام في مرحلة وحدة
+const MIX = { id: 'mix', title: 'ميكس', subtitle: 'أسئلة من كل الأقسام مخلوطة', icon: 'mix' };
+const allSections = () => [...data.sections, MIX];
+const sectionById = id => allSections().find(s => s.id === id);
+const questionsIn = id => id === MIX.id ? data.questions : data.questions.filter(q => q.section === id);
+const countIn = id => questionsIn(id).length;
 
 /* ---------- 1. البداية ---------- */
 function renderHome() {
-  $('[data-sec-strip]').innerHTML = data.sections.map((s, i) =>
-    `<li>${icon(s.icon, `ic c${i % 4}`)}<span>${esc(s.title)}<small>${countIn(s.id)} سؤال</small></span></li>`).join('');
+  $('[data-sec-strip]').innerHTML = allSections().map((s, i) =>
+    `<li class="${s.id === MIX.id ? 'mix' : ''}">${icon(s.icon, `ic c${i % 4}`)}<span>${esc(s.title)}<small>${countIn(s.id)} سؤال</small></span></li>`).join('');
   const best = store.get('records', [])[0];
   const b = $('[data-best]');
   b.hidden = !best;
@@ -105,27 +110,20 @@ function renderHome() {
 function renderSetup() {
   const f = $('[data-setup]');
   f.name.value = settings.name;
-  $('[data-avatars]').innerHTML = AVATARS.map((a, i) =>
-    `<button type="button" role="radio" aria-checked="${i === settings.avatar}" aria-label="أيقونة ${i + 1}" data-av="${i}" style="background:${a.color}">${icon(a.icon)}</button>`).join('');
   f.querySelector(`[name="level"][value="${settings.level}"]`).checked = true;
   f.querySelector(`[name="length"][value="${settings.length}"]`).checked = true;
   const chosen = settings.sections || data.sections.map(s => s.id);
-  $('[data-sec-pick]').innerHTML = data.sections.map((s, i) =>
-    `<label><input type="checkbox" name="sec" value="${s.id}" ${chosen.includes(s.id) ? 'checked' : ''}><span>${icon(s.icon, `ic c${i % 4}`)}<span>${esc(s.title)}<small>${countIn(s.id)} سؤال</small></span></span></label>`).join('');
+  $('[data-sec-pick]').innerHTML = allSections().map((s, i) =>
+    `<label class="${s.id === MIX.id ? 'mix' : ''}"><input type="checkbox" name="sec" value="${s.id}" ${chosen.includes(s.id) ? 'checked' : ''}><span>${icon(s.icon, `ic c${i % 4}`)}<span>${esc(s.id === MIX.id ? 'ميكس: كل الأقسام مخلوطة' : s.title)}<small>${countIn(s.id)} سؤال</small></span></span></label>`).join('');
   f.sound.checked = settings.sound;
   $('[data-form-err]').hidden = true;
 }
-$('[data-avatars]').addEventListener('click', e => {
-  const b = e.target.closest('[data-av]'); if (!b) return;
-  settings.avatar = +b.dataset.av;
-  $$('[data-av]').forEach(x => x.setAttribute('aria-checked', x === b));
-});
-$('[data-avatars]').addEventListener('keydown', e => {
-  if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-  const n = AVATARS.length, d = e.key === 'ArrowLeft' ? 1 : -1; // RTL: اليسار = التالي
-  settings.avatar = (settings.avatar + d + n) % n;
-  $$('[data-av]').forEach((x, i) => x.setAttribute('aria-checked', i === settings.avatar));
-  $(`[data-av="${settings.avatar}"]`).focus();
+// «ميكس» ما ينجمع مع باقي الأقسام: اختياره يلغي الباقي، واختيار قسم يلغيه
+$('[data-sec-pick]').addEventListener('change', e => {
+  const box = e.target; if (!box.checked) return;
+  $$('[name="sec"]').forEach(i => {
+    if (i !== box && (box.value === MIX.id || i.value === MIX.id)) i.checked = false;
+  });
 });
 $('[data-setup]').addEventListener('submit', e => {
   e.preventDefault();
@@ -161,7 +159,7 @@ function startGame(quick) {
     if (!ids.length) ids = data.sections.map(s => s.id);
     if (level === 'hard') ids = shuffle(ids);
     stages = ids.map(id => {
-      const s = sectionById(id), qs = data.questions.filter(q => q.section === id);
+      const s = sectionById(id), qs = questionsIn(id);
       // «كل الأسئلة» = كل أسئلة المستوى (وعلى الأقل 5)؛ غير كذا العدد المختار
       const target = settings.length === 'all'
         ? Math.max(Math.min(5, qs.length), qs.filter(q => ALLOWED[level].includes(q.difficulty)).length)
@@ -239,7 +237,7 @@ function showQuestion() {
     else tile.innerHTML = `${icon(sectionById(q.section)?.icon || 'book')}<span class="lbl">${esc(q.group || '')}</span>`;
   }
   const secTitle = sectionById(q.section)?.title || '';
-  $('[data-q-group]').textContent = game.quick
+  $('[data-q-group]').textContent = game.quick || st.id === MIX.id
     ? [secTitle, q.group].filter((v, i, a) => v && a.indexOf(v) === i).join(' · ')
     : (q.group && q.group !== st.title ? q.group : '');
   let prompt = q.prompt;
@@ -351,7 +349,7 @@ function afterSummary() {
 /* ---------- 6. النهاية ---------- */
 function finish() {
   const total = game.right + game.wrong, ratio = game.right / Math.max(1, total);
-  $('[data-final-kicker]').textContent = game.out ? 'خلصت قلوبك 💔 بس لعبت سمح!' : (game.quick ? 'خلّصت الجولة السريعة' : 'خلّصت كل المراحل');
+  $('[data-final-kicker]').textContent = game.out ? 'خلصت قلوبك 💔 بس لعبت سمح!' : (game.quick ? 'خلّصت الجولة السريعة' : game.stages.length === 1 && game.stages[0].id === MIX.id ? 'خلّصت الميكس' : 'خلّصت كل المراحل');
   $('[data-final-title]').textContent = game.out ? 'يحليلك… المرة الجاية تكسر الرقم!' : ratio >= .8 ? 'دي درعة! 🏆' : ratio >= .5 ? 'زط! أداء سمح' : 'سجم رمادك! جرّب تاني 😄';
   $('[data-final-score]').textContent = game.score;
   $('[data-final-right]').textContent = game.right;
