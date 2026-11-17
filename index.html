@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تحدّي السودان</title>
+<meta name="description" content="لعبة أسئلة سودانية: الفنانين، الرابرز، البيت السوداني ولهجته، والأدب السوداني.">
+<meta name="theme-color" content="#2F7FBF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="public/icons/icon-192.png">
+<link rel="apple-touch-icon" href="public/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ===== 1. البداية ===== -->
+<section class="screen home" data-screen="home" aria-labelledby="home-title">
+  <div class="home-in">
+    <div class="door">
+      <div class="door-sub">فن · تراث · لهجة · أدب</div>
+      <h1 class="logo" id="home-title">تحدّي السودان</h1>
+      <p class="door-tag">تعرف فنانينا، أغراض بيوتنا، كلامنا وأدبنا؟ ورّينا شطارتك!</p>
+      <div class="door-cta">
+        <button class="btn primary" data-go="setup">ابدأ</button>
+        <button class="btn light" data-action="quick">جولة سريعة · 10 أسئلة</button>
+        <button class="btn ghost" data-action="howto">كيف ألعب</button>
+      </div>
+      <div class="band" aria-hidden="true"></div>
+    </div>
+    <p class="best" data-best hidden></p>
+    <ul class="sec-strip" data-sec-strip aria-label="أقسام اللعبة"></ul>
+  </div>
+</section>
+
+<!-- ===== 2. الإعداد ===== -->
+<section class="screen setup" data-screen="setup" aria-labelledby="setup-title" hidden>
+  <div class="panel">
+    <header class="panel-head">
+      <button class="icon-btn" data-go="home" aria-label="رجوع للبداية"><svg class="ic"><use href="#i-home"/></svg></button>
+      <h2 id="setup-title">جهّز اللعبة</h2>
+    </header>
+    <form class="setup-form" data-setup>
+      <fieldset class="field">
+        <legend>اسمك</legend>
+        <input class="text-in" name="name" maxlength="16" autocomplete="nickname" placeholder="اكتب اسمك" required>
+        <div class="avatars" role="radiogroup" aria-label="اختر لونك" data-avatars></div>
+      </fieldset>
+      <fieldset class="field">
+        <legend>المستوى</legend>
+        <div class="seg" data-levels>
+          <label><input type="radio" name="level" value="easy"><span><b>سهل</b><small>3 خيارات · الأسئلة الأشهر</small></span></label>
+          <label><input type="radio" name="level" value="medium"><span><b>وسط</b><small>4 خيارات · كل الأسئلة</small></span></label>
+          <label><input type="radio" name="level" value="hard"><span><b>صعب</b><small>4 خيارات · تلميحات بدل الصور</small></span></label>
+        </div>
+      </fieldset>
+      <fieldset class="field">
+        <legend>الأقسام</legend>
+        <div class="sec-pick" data-sec-pick></div>
+      </fieldset>
+      <fieldset class="field">
+        <legend>طول كل قسم</legend>
+        <div class="seg seg-sm">
+          <label><input type="radio" name="length" value="5"><span><b>5 أسئلة</b></span></label>
+          <label><input type="radio" name="length" value="10"><span><b>10 أسئلة</b></span></label>
+          <label><input type="radio" name="length" value="all"><span><b>كل الأسئلة</b></span></label>
+        </div>
+      </fieldset>
+      <label class="switch"><input type="checkbox" name="sound"><span>الصوت</span></label>
+      <p class="form-err" data-form-err hidden></p>
+      <button class="btn primary wide" type="submit">يلّا نبدأ</button>
+    </form>
+  </div>
+</section>
+
+<!-- ===== 3. عنوان القسم ===== -->
+<section class="screen intro" data-screen="intro" aria-live="polite" hidden>
+  <div class="intro-arch">
+    <div class="intro-step" data-intro-step></div>
+    <svg class="ic intro-ic" aria-hidden="true"><use data-intro-icon href="#i-oud"/></svg>
+    <h2 class="intro-title" data-intro-title></h2>
+    <p class="intro-sub" data-intro-sub></p>
+    <p class="intro-count" data-intro-count></p>
+    <button class="btn primary" data-action="begin-section">جاهز!</button>
+  </div>
+  <div class="band intro-band" aria-hidden="true"></div>
+</section>
+
+<!-- ===== 4. السؤال ===== -->
+<section class="screen play" data-screen="play" hidden>
+  <header class="hud">
+    <div class="prog">
+      <div class="prog-row"><span data-sec-name></span><b data-q-count></b></div>
+      <div class="bar" role="progressbar" aria-label="التقدّم في القسم" data-bar><i></i></div>
+    </div>
+    <div class="tools">
+      <button class="tool" data-action="fifty" aria-label="احذف خيارين"><svg class="ic"><use href="#i-half"/></svg><span>50/50</span></button>
+      <button class="tool" data-action="mute" aria-label="كتم الصوت" aria-pressed="false"><svg class="ic"><use href="#i-sound"/></svg></button>
+      <button class="tool" data-action="pause" aria-label="إنهاء اللعبة"><svg class="ic"><use href="#i-home"/></svg></button>
+    </div>
+  </header>
+
+  <aside class="me" aria-label="لاعبك">
+    <span class="av" data-me-av></span>
+    <div class="me-info">
+      <span class="me-name" data-me-name></span>
+      <span class="hearts" data-hearts aria-label="القلوب"></span>
+    </div>
+    <div class="me-score"><b data-score>0</b><small>نقطة</small></div>
+    <span class="streak" data-streak hidden></span>
+  </aside>
+
+  <main class="stage">
+    <figure class="pic" data-pic>
+      <img data-q-img alt="">
+      <div class="word-tile" data-word hidden></div>
+    </figure>
+    <div class="ask">
+      <p class="q-group" data-q-group></p>
+      <h2 class="q-text" data-q-text tabindex="-1"></h2>
+      <div class="opts" data-opts></div>
+      <p class="feedback" data-feedback aria-live="assertive"></p>
+    </div>
+  </main>
+</section>
+
+<!-- بطاقة التعريف -->
+<div class="overlay" data-card hidden>
+  <article class="card" role="dialog" aria-modal="true" aria-labelledby="card-title">
+    <p class="res" data-res></p>
+    <div class="card-media" data-card-media></div>
+    <h3 id="card-title" data-card-title></h3>
+    <p class="nick" data-card-nick></p>
+    <p class="bio" data-card-bio></p>
+    <button class="more" data-action="more" hidden>اقرأ المزيد</button>
+    <p class="bonus" data-card-bonus></p>
+    <button class="btn primary wide" data-action="next">التالي ←</button>
+  </article>
+</div>
+
+<!-- إيقاف مؤقت -->
+<div class="overlay center" data-pause hidden>
+  <div class="card small" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <h3 id="pause-title">تبي تنهي اللعبة؟</h3>
+    <p>نتيجتك لين الحين بتنحفظ.</p>
+    <button class="btn primary wide" data-action="resume">كمّل اللعب</button>
+    <button class="btn ghost-dark wide" data-action="quit">إنهاء اللعبة</button>
+  </div>
+</div>
+
+<!-- كيف ألعب -->
+<div class="overlay center" data-howto hidden>
+  <div class="card small howto" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+    <h3 id="howto-title">كيف ألعب؟</h3>
+    <ul>
+      <li>اختر المستوى والأقسام، وخذ راحتك في التفكير: ما فيه وقت محدد.</li>
+      <li>معك <b>قلبين ❤️❤️</b>. كل إجابة غلط تنقّص قلب، ولو خلصوا تنتهي اللعبة.</li>
+      <li>الإجابة الصح = <b>10 نقاط</b>، و<b>3 صح ورا بعض 🔥</b> تعطيك بونص زيادة.</li>
+      <li>عندك <b>50/50</b> مرة وحدة في اللعبة: تحذف خيارين غلط.</li>
+      <li>بعد كل سؤال تطلع لك بطاقة تعرّفك على الجواب.</li>
+      <li class="keys">الكيبورد: <kbd>1</kbd>–<kbd>4</kbd> للخيارات، <kbd>Enter</kbd> للتالي، <kbd>M</kbd> كتم، والأسهم للتنقل.</li>
+    </ul>
+    <button class="btn primary wide" data-action="close-howto">فهمت</button>
+  </div>
+</div>
+
+<!-- ===== 5. ملخص القسم ===== -->
+<section class="screen summary" data-screen="summary" hidden>
+  <div class="panel center">
+    <svg class="ic sum-ic" aria-hidden="true"><use data-sum-icon href="#i-oud"/></svg>
+    <h2 data-sum-title></h2>
+    <div class="stats">
+      <div class="stat ok"><b data-sum-right>0</b><span>✓ صح</span></div>
+      <div class="stat no"><b data-sum-wrong>0</b><span>✗ غلط</span></div>
+      <div class="stat pts"><b data-sum-pts>0</b><span>نقطة</span></div>
+    </div>
+    <p class="sum-msg" data-sum-msg></p>
+    <button class="btn primary wide" data-action="after-summary"></button>
+  </div>
+</section>
+
+<!-- ===== 6. النهاية ===== -->
+<section class="screen final" data-screen="final" hidden>
+  <canvas class="confetti" data-confetti aria-hidden="true"></canvas>
+  <div class="panel center">
+    <p class="final-kicker" data-final-kicker></p>
+    <h2 class="final-title" data-final-title></h2>
+    <div class="final-score"><b data-final-score>0</b><span>نقطة</span></div>
+    <div class="stats">
+      <div class="stat ok"><b data-final-right>0</b><span>✓ صح</span></div>
+      <div class="stat no"><b data-final-wrong>0</b><span>✗ غلط</span></div>
+      <div class="stat pts"><b data-final-streak>0</b><span>🔥 أطول سلسلة</span></div>
+    </div>
+    <h3 class="podium-title">🏆 منصة أفضل النتائج</h3>
+    <ol class="podium" data-podium></ol>
+    <div class="final-cta">
+      <button class="btn primary" data-action="again">العب مرة ثانية</button>
+      <button class="btn ghost-dark" data-go="setup">غيّر الإعدادات</button>
+    </div>
+  </div>
+</section>
+
+<script src="js/app.js" type="module"></script>
+</body>
+</html>
